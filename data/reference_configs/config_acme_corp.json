@@ -1,0 +1,43 @@
+{
+  "customer_name": "Acme Corporation",
+  "environment_tier": "medium",
+  "compute": {
+    "instance_type": "n2-standard-4",
+    "instance_count": 2,
+    "vcpus_per_instance": 4,
+    "memory_gb_per_instance": 16
+  },
+  "storage": {
+    "storage_type": "pd-ssd",
+    "total_storage_gb": 500,
+    "iops_required": 3000
+  },
+  "networking": {
+    "vpc_cidr": "10.1.0.0/16",
+    "subnet_count": 2,
+    "load_balancer": true
+  },
+  "services": [
+    {
+      "service_name": "Cloud SQL",
+      "enabled": true,
+      "configuration": {
+        "engine": "PostgreSQL",
+        "tier": "db-standard-4"
+      }
+    },
+    {
+      "service_name": "Cloud Monitoring",
+      "enabled": true,
+      "configuration": {}
+    },
+    {
+      "service_name": "Cloud Logging",
+      "enabled": true,
+      "configuration": {}
+    }
+  ],
+  "high_availability": true,
+  "backup_enabled": true,
+  "estimated_users": 200
+}

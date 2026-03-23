@@ -1,0 +1,30 @@
+STATEMENT OF WORK
+Client: BrightStar Analytics
+Contract Date: 2025-12-01
+Project: Data Analytics Platform Deployment
+
+1. SCOPE OF WORK
+BrightStar Analytics requires a scalable cloud environment for their data analytics platform.
+The platform processes large datasets and runs machine learning workloads.
+Approximately 50 data scientists and analysts will use the platform.
+
+2. TECHNICAL REQUIREMENTS
+- Compute: High-performance compute is essential. Each analytics node requires
+  8 vCPUs and 32GB RAM. Four compute nodes are needed to handle parallel workloads.
+- Storage: The total data lake size is approximately 2TB. Standard persistent disk
+  is acceptable for the data lake. IOPS requirement is 1500.
+- Networking: VPC with 3 subnets (data, compute, management).
+  No external load balancer needed — internal traffic only.
+  VPC CIDR: 10.2.0.0/16
+- Services Required:
+  * BigQuery - primary analytics engine
+  * Cloud Storage - data lake storage
+  * Dataflow - ETL pipeline processing
+  * Cloud Monitoring - infrastructure monitoring
+
+3. AVAILABILITY REQUIREMENTS
+- High availability is NOT required (development/analytics workload)
+- Weekly backups sufficient
+
+4. USER ESTIMATE
+- 50 concurrent users

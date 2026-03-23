@@ -1,0 +1,47 @@
+{
+  "customer_name": "BrightStar Analytics",
+  "environment_tier": "large",
+  "compute": {
+    "instance_type": "n2-standard-8",
+    "instance_count": 4,
+    "vcpus_per_instance": 8,
+    "memory_gb_per_instance": 32
+  },
+  "storage": {
+    "storage_type": "pd-standard",
+    "total_storage_gb": 2000,
+    "iops_required": 1500
+  },
+  "networking": {
+    "vpc_cidr": "10.2.0.0/16",
+    "subnet_count": 3,
+    "load_balancer": false
+  },
+  "services": [
+    {
+      "service_name": "BigQuery",
+      "enabled": true,
+      "configuration": {}
+    },
+    {
+      "service_name": "Cloud Storage",
+      "enabled": true,
+      "configuration": {
+        "bucket_class": "standard"
+      }
+    },
+    {
+      "service_name": "Dataflow",
+      "enabled": true,
+      "configuration": {}
+    },
+    {
+      "service_name": "Cloud Monitoring",
+      "enabled": true,
+      "configuration": {}
+    }
+  ],
+  "high_availability": false,
+  "backup_enabled": true,
+  "estimated_users": 50
+}
