@@ -1,7 +1,5 @@
-# Cadence Dev Day — Study Guide
+# Cadence Dev Day — Overview
 ## Cloud Config Right Sizing Pricing Agent
-
-Use this to review before dev day. Covers every component, what it does, and where to go when the client asks questions.
 
 ---
 
