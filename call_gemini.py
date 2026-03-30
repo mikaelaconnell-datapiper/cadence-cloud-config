@@ -1,16 +1,69 @@
 """
-Station 3: Call Gemini (MOCK VERSION)
-======================================
+Station 3: Call Gemini
+=======================
 This file is where we send our prompt to Gemini and get a response.
 
-RIGHT NOW: It returns a fake (mock) response so we can test everything
-without needing GCP access.
+HOW IT WORKS:
+1. If you have a GCP project configured, it calls the REAL Gemini API via Vertex AI
+2. If Gemini isn't available (no project, no auth, API error), it falls back to the
+   mock version so the demo still works
+3. After getting a response, it validates against the schema
+4. If validation fails, it tries a REPAIR step — sends the error back to Gemini
+   and asks it to fix the JSON
 
-ON DEV DAY: You'll replace the mock function with the real Gemini API call.
-It's literally swapping one function — everything else stays the same.
+WHY THE FALLBACK?
+On dev day, if GCP access isn't ready or the API is slow, you don't want the demo
+to just crash. The fallback gives you a working pipeline to show while you troubleshoot.
 """
 
 import json
+import logging
+import os
+import re
+
+logger = logging.getLogger(__name__)
+
+
+def _clean_response_text(response_text):
+    """
+    Sometimes the AI wraps its JSON in markdown code fences like ```json ... ```.
+    This strips those off so we can parse the raw JSON.
+    """
+    cleaned = response_text.strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[len("```json"):].strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:].strip()
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3].strip()
+    return cleaned
+
+
+def call_gemini_real(system_prompt, user_prompt):
+    """
+    REAL VERSION — calls Gemini via Vertex AI.
+
+    Uses the project ID and location from environment variables.
+    The response_mime_type="application/json" tells Gemini to ONLY return JSON,
+    which reduces the chance of getting markdown or explanations mixed in.
+    """
+    import vertexai
+    from vertexai.generative_models import GenerativeModel
+
+    project = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+    location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+    vertexai.init(project=project, location=location)
+    model = GenerativeModel("gemini-3.1-pro", system_instruction=[system_prompt])
+    chat = model.start_chat()
+    response = chat.send_message(
+        user_prompt,
+        generation_config={
+            "temperature": 0.2,  # Low temperature = more consistent output
+            "response_mime_type": "application/json",  # Forces JSON-only response
+        },
+    )
+    return _clean_response_text(response.text)
 
 
 def call_gemini_mock(system_prompt, user_prompt):
@@ -19,17 +72,14 @@ def call_gemini_mock(system_prompt, user_prompt):
 
     This pretends to be Gemini. It reads keywords from the SOW text
     and returns a reasonable-looking config. This lets us test the
-    entire app flow (UI → extraction → prompt → response → validation)
+    entire app flow (UI -> extraction -> prompt -> response -> validation)
     without needing GCP access.
     """
-
-    # Look for clues in the user prompt to generate a semi-realistic response
     sow_text = user_prompt.lower()
 
     # Try to figure out the customer name from the SOW
     customer_name = "Unknown Customer"
     if "client:" in sow_text:
-        # Find the line that starts with "client:"
         for line in user_prompt.split("\n"):
             if "Client:" in line:
                 customer_name = line.split("Client:")[1].strip()
@@ -92,32 +142,63 @@ def call_gemini_mock(system_prompt, user_prompt):
     return json.dumps(mock_config, indent=2)
 
 
-def call_gemini_real(system_prompt, user_prompt):
+def repair_config(invalid_json_str, validation_error, schema):
     """
-    REAL VERSION — uncomment and use this on dev day when you have GCP access.
+    SCHEMA REPAIR — if the AI's output fails validation, send the error
+    back to Gemini and ask it to fix just the broken parts.
 
-    You'll need to:
-    1. pip install google-cloud-aiplatform
-    2. Be authenticated to your GCP project
-    3. Replace MODEL_NAME with whatever the team tells you to use
+    This only works with a real GCP connection. If we're using the mock,
+    we just return the original (broken) config as-is.
     """
-    # from google.cloud import aiplatform
-    # import vertexai
-    # from vertexai.generative_models import GenerativeModel
-    #
-    # vertexai.init(project="YOUR_PROJECT_ID", location="us-central1")
-    # model = GenerativeModel("MODEL_NAME")  # Ask your team which model
-    #
-    # response = model.generate_content(
-    #     [system_prompt, user_prompt],
-    #     generation_config={"temperature": 0}  # 0 = most consistent output
-    # )
-    #
-    # return response.text
-    pass
+    project = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+    if not project or project == "your-gcp-project-id":
+        return invalid_json_str
+
+    try:
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+
+        location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        vertexai.init(project=project, location=location)
+        model = GenerativeModel("gemini-3.1-pro")
+
+        prompt = (
+            "Fix the following JSON so it conforms to the provided schema. "
+            "Change structure only as needed and return valid JSON only.\n\n"
+            f"Schema:\n{json.dumps(schema, indent=2)}\n\n"
+            f"Validation error:\n{validation_error}\n\n"
+            f"Invalid JSON:\n{invalid_json_str}"
+        )
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0,
+                "response_mime_type": "application/json",
+            },
+        )
+        return _clean_response_text(response.text)
+    except Exception as exc:
+        logger.error("Repair attempt failed: %s", exc)
+        return invalid_json_str
 
 
-# This is the function the rest of the app calls.
-# Switch this to call_gemini_real when you have GCP access.
 def call_gemini(system_prompt, user_prompt):
-    return call_gemini_mock(system_prompt, user_prompt)
+    """
+    Main function the rest of the app calls.
+
+    Tries the real Gemini API first. If anything goes wrong (no project,
+    no auth, API error), falls back to the mock so the demo keeps working.
+    """
+    project = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+
+    # If no project is configured, go straight to mock
+    if not project or project == "your-gcp-project-id":
+        logger.warning("No GCP project configured. Using mock generator.")
+        return call_gemini_mock(system_prompt, user_prompt)
+
+    # Try the real API
+    try:
+        return call_gemini_real(system_prompt, user_prompt)
+    except Exception as exc:
+        logger.error("Vertex AI call failed, falling back to mock: %s", exc)
+        return call_gemini_mock(system_prompt, user_prompt)
