@@ -3,4 +3,5 @@ pypdf
 gradio
 jsonschema
 google-cloud-aiplatform
+google-genai
 python-dotenv

@@ -102,7 +102,7 @@ def score_config(generated, expected):
 def format_report(score_result):
     """
     Takes the score result and returns a nicely formatted string report.
-    This is what we'll display in the Gradio UI.
+    This is what we'll display in the Gradio UI as plain text (fallback).
     """
     lines = []
     lines.append(f"ACCURACY: {score_result['accuracy']}% ({score_result['matched_fields']}/{score_result['total_fields']} fields)")
@@ -117,6 +117,76 @@ def format_report(score_result):
         lines.append(f"{d['field']:<35} {exp:<20} {gen:<20} {match_icon}")
 
     return "\n".join(lines)
+
+
+def format_report_html(score_result):
+    """
+    Returns the accuracy report as a styled HTML table for the Gradio UI.
+    Color-coded rows: green for matches, red for mismatches.
+    """
+    accuracy = score_result["accuracy"]
+    matched = score_result["matched_fields"]
+    total = score_result["total_fields"]
+
+    # Color the accuracy badge based on score
+    if accuracy >= 80:
+        badge_color = "#16a34a"  # green
+    elif accuracy >= 60:
+        badge_color = "#ca8a04"  # yellow
+    else:
+        badge_color = "#dc2626"  # red
+
+    html = f"""
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <div style="font-family: 'Google Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; letter-spacing: 0.01em;">
+      <div style="margin-bottom: 16px;">
+        <span style="background: {badge_color}; color: white; padding: 6px 14px;
+               border-radius: 6px; font-weight: 600; font-size: 15px;">
+          {accuracy}% Accuracy
+        </span>
+        <span style="color: #6b7280; margin-left: 10px; font-size: 13px;">
+          {matched} / {total} fields matched
+        </span>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #e5e7eb;">
+            <th style="text-align: left; padding: 8px 10px; color: #374151; font-weight: 600;">Field</th>
+            <th style="text-align: left; padding: 8px 10px; color: #374151; font-weight: 600;">Expected</th>
+            <th style="text-align: left; padding: 8px 10px; color: #374151; font-weight: 600;">Generated</th>
+            <th style="text-align: center; padding: 8px 10px; color: #374151; font-weight: 600;">Match</th>
+          </tr>
+        </thead>
+        <tbody>
+    """
+
+    for d in score_result["details"]:
+        exp = str(d["expected"])
+        gen = str(d["generated"])
+        if d["match"]:
+            icon = "&#10003;"  # checkmark
+            icon_color = "#16a34a"
+            row_bg = "#f0fdf4"
+        else:
+            icon = "&#10007;"  # X mark
+            icon_color = "#dc2626"
+            row_bg = "#fef2f2"
+
+        html += f"""
+          <tr style="background: {row_bg}; border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 7px 10px; font-weight: 500; color: #1f2937;">{d['field']}</td>
+            <td style="padding: 7px 10px; color: #4b5563;">{exp}</td>
+            <td style="padding: 7px 10px; color: #4b5563;">{gen}</td>
+            <td style="padding: 7px 10px; text-align: center; color: {icon_color}; font-size: 16px; font-weight: 700;">{icon}</td>
+          </tr>
+        """
+
+    html += """
+        </tbody>
+      </table>
+    </div>
+    """
+    return html
 
 
 # ---- TESTING ----

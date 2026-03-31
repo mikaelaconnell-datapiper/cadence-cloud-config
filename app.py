@@ -1,14 +1,11 @@
 """
 The Gradio App — The Demo UI
 ==============================
-This is what you run on dev day. It creates a web page with:
-- An upload button for the SOW file
-- A button to generate the config
-- Sanitized text preview (shows PII was redacted)
-- The generated JSON output
-- Validation status (pass/fail)
-- Confidence score (High/Medium/Low)
-- Accuracy report (if we have the correct answer to compare against)
+Three tabs for different workflows:
+
+Tab 1: SANITIZE — Upload a SOW PDF, get sanitized text to copy into Agent Designer
+Tab 2: VALIDATE & SCORE — Paste JSON from Agent Designer, validate + score it
+Tab 3: FULL PIPELINE — Upload PDF, run everything end to end with Gemini API
 
 TO RUN:
   source venv/bin/activate
@@ -31,7 +28,7 @@ from sanitizer import sanitize_text
 from build_prompt import load_reference_examples, load_schema, build_system_prompt, build_user_prompt
 from call_gemini import call_gemini, repair_config
 from validate_output import validate_config
-from score_accuracy import score_config, format_report
+from score_accuracy import score_config, format_report, format_report_html
 
 
 # --- Load everything when the app starts ---
@@ -57,37 +54,139 @@ for f in os.listdir(eval_config_dir):
             EVAL_CONFIGS[config["customer_name"]] = config
             print(f"Loaded eval config for: {config['customer_name']}")
 
-# Check GCP status
+# Check API status
+API_KEY = os.getenv("GEMINI_API_KEY", "")
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "")
-if not PROJECT_ID or PROJECT_ID == "your-gcp-project-id":
-    print("\nWarning: GOOGLE_CLOUD_PROJECT is not set. Using mock generator.")
-else:
+if API_KEY:
+    print(f"\nUsing Gemini API key: {API_KEY[:10]}...")
+elif PROJECT_ID and PROJECT_ID != "your-gcp-project-id":
     print(f"\nUsing GCP project: {PROJECT_ID}")
+else:
+    print("\nNo API key or GCP project set. Full Pipeline tab will use mock generator.")
 
 print("\nApp ready!\n")
 
 
+# =============================================
+# TAB 1: SANITIZE
+# =============================================
+def sanitize_sow(file_path):
+    """
+    Takes a SOW PDF/TXT, extracts text, redacts PII.
+    Returns the sanitized text ready to copy into Agent Designer.
+    """
+    if file_path is None:
+        return "Please upload a SOW document.", ""
+
+    try:
+        raw_text = extract_text(file_path)
+    except (ValueError, Exception):
+        try:
+            with open(file_path, "r") as f:
+                raw_text = f.read()
+        except Exception as e:
+            return f"Error reading file: {e}", ""
+
+    if not raw_text.strip():
+        return "No text could be extracted from this file.", ""
+
+    sanitized = sanitize_text(raw_text)
+    return raw_text, sanitized
+
+
+# =============================================
+# TAB 2: VALIDATE & SCORE
+# =============================================
+def validate_and_score(json_text):
+    """
+    Takes raw JSON text (pasted from Agent Designer), validates it
+    against the schema, and scores accuracy if an eval config exists.
+    """
+    if not json_text or not json_text.strip():
+        return "Please paste a JSON config.", ""
+
+    # Try to parse the JSON
+    is_valid, parsed_or_error = validate_config(json_text, SCHEMA)
+
+    if not is_valid:
+        return f"VALIDATION FAILED: {parsed_or_error}", ""
+
+    validation_status = "PASSED — all required fields present, types correct"
+    pretty_json = json.dumps(parsed_or_error, indent=2)
+
+    # Score accuracy if we have a known-good config
+    customer_name = parsed_or_error.get("customer_name", "")
+    if customer_name in EVAL_CONFIGS:
+        score_result = score_config(parsed_or_error, EVAL_CONFIGS[customer_name])
+        accuracy_report = format_report_html(score_result)
+    else:
+        accuracy_report = (
+            "<div style='font-family: Google Sans, Helvetica Neue, Helvetica, Arial, sans-serif; "
+            "color: #6b7280; font-size: 14px;'>"
+            f"No eval config found for '{customer_name}' — scoring skipped.<br>"
+            "<span style='font-size: 12px;'>(Upload a known-good config JSON to enable scoring.)</span>"
+            "</div>"
+        )
+
+    return validation_status, accuracy_report
+
+
+def validate_with_eval(json_text, eval_file):
+    """
+    Same as validate_and_score but also accepts a known-good config
+    file for accuracy scoring (for SOWs not in our eval set).
+    """
+    if not json_text or not json_text.strip():
+        return "Please paste a JSON config.", ""
+
+    is_valid, parsed_or_error = validate_config(json_text, SCHEMA)
+
+    if not is_valid:
+        return f"VALIDATION FAILED: {parsed_or_error}", ""
+
+    validation_status = "PASSED — all required fields present, types correct"
+
+    # Try scoring with uploaded eval file first, then fall back to built-in
+    if eval_file is not None:
+        try:
+            with open(eval_file.name, "r", encoding="utf-8") as f:
+                eval_data = json.load(f)
+            expected = eval_data.get("expected_config", eval_data)
+            score_result = score_config(parsed_or_error, expected)
+            accuracy_report = format_report_html(score_result)
+            return validation_status, accuracy_report
+        except Exception as exc:
+            return validation_status, f"<div style='color: #dc2626;'>Error reading eval file: {exc}</div>"
+
+    # Fall back to built-in eval configs
+    customer_name = parsed_or_error.get("customer_name", "")
+    if customer_name in EVAL_CONFIGS:
+        score_result = score_config(parsed_or_error, EVAL_CONFIGS[customer_name])
+        accuracy_report = format_report_html(score_result)
+    else:
+        accuracy_report = (
+            "<div style='font-family: Google Sans, Helvetica Neue, Helvetica, Arial, sans-serif; "
+            "color: #6b7280; font-size: 14px;'>"
+            f"No eval config found for '{customer_name}' — scoring skipped.<br>"
+            "<span style='font-size: 12px;'>(Upload a known-good config JSON above to enable scoring.)</span>"
+            "</div>"
+        )
+
+    return validation_status, accuracy_report
+
+
+# =============================================
+# TAB 3: FULL PIPELINE
+# =============================================
 def estimate_confidence(raw_text, sanitized_text, repair_was_attempted):
     """
     Estimates how confident we should be in the generated config.
-
-    High = clean extraction, minimal redaction, no repair needed
-    Medium = one minor issue
-    Low = multiple issues — flag for human review
-
-    This is a nice-to-have deliverable for the demo.
     """
     issues = []
-
-    # If the PDF extraction got very little text, the config might be unreliable
     if len(raw_text.strip()) < 200:
         issues.append("weak_pdf_extraction")
-
-    # If a lot of content was redacted, the AI had less info to work with
     if sanitized_text.count("[REDACTED") > 10:
         issues.append("heavily_redacted_input")
-
-    # If the AI's first output failed schema validation and needed repair
     if repair_was_attempted:
         issues.append("required_schema_repair")
 
@@ -100,15 +199,12 @@ def estimate_confidence(raw_text, sanitized_text, repair_was_attempted):
 
 def process_sow(file_path):
     """
-    Main function — takes the uploaded file through all 5 stations plus
-    sanitization, repair, and confidence scoring.
-
-    Gradio passes the file path as a string.
+    Full pipeline — extract, sanitize, generate, validate, score.
     """
     if file_path is None:
         return "No file uploaded", "", "", "", ""
 
-    # Station 1: Extract text from the PDF/TXT
+    # Station 1: Extract text
     try:
         raw_text = extract_text(file_path)
     except (ValueError, Exception):
@@ -118,19 +214,19 @@ def process_sow(file_path):
         except Exception as e:
             return f"Error reading file: {e}", "", "", "", ""
 
-    # Sanitize: Redact PII before sending to the AI
+    # Sanitize PII
     sanitized_text = sanitize_text(raw_text)
 
-    # Station 2: Build the prompt (using sanitized text, not raw)
+    # Station 2: Build prompt
     user_prompt = build_user_prompt(sanitized_text)
 
-    # Station 3: Call Gemini (real or mock depending on config)
+    # Station 3: Call Gemini
     raw_response = call_gemini(SYSTEM_PROMPT, user_prompt)
 
-    # Station 4: Validate against the schema
+    # Station 4: Validate
     is_valid, parsed_or_error = validate_config(raw_response, SCHEMA)
 
-    # If validation failed, try the repair step
+    # Try repair if validation failed
     repair_attempted = False
     if not is_valid:
         repair_attempted = True
@@ -146,23 +242,23 @@ def process_sow(file_path):
                 confidence,
                 "Cannot score — validation failed",
             )
-        # Repair succeeded — use the repaired version
         raw_response = repaired_response
 
     pretty_json = json.dumps(parsed_or_error, indent=2)
-
-    # Confidence scoring
     confidence = estimate_confidence(raw_text, sanitized_text, repair_attempted)
 
-    # Station 5: Score accuracy (if we have the correct answer)
+    # Station 5: Score accuracy
     customer_name = parsed_or_error.get("customer_name", "")
     if customer_name in EVAL_CONFIGS:
         score_result = score_config(parsed_or_error, EVAL_CONFIGS[customer_name])
-        accuracy_report = format_report(score_result)
+        accuracy_report = format_report_html(score_result)
     else:
         accuracy_report = (
-            f"No eval config found for '{customer_name}' — scoring skipped.\n"
-            "(Normal for reference SOWs. Scoring works for eval SOWs.)"
+            "<div style='font-family: Google Sans, Helvetica Neue, Helvetica, Arial, sans-serif; "
+            "color: #6b7280; font-size: 14px;'>"
+            f"No eval config found for '{customer_name}' — scoring skipped.<br>"
+            "<span style='font-size: 12px;'>(Normal for reference SOWs. Scoring works for eval SOWs.)</span>"
+            "</div>"
         )
 
     validation_status = "PASSED — all required fields present, types correct"
@@ -172,34 +268,108 @@ def process_sow(file_path):
     return sanitized_text, pretty_json, validation_status, confidence, accuracy_report
 
 
-# --- Build the Gradio UI ---
-with gr.Blocks(title="Cloud Config Agent — Cadence Dev Day", theme=gr.themes.Soft()) as app:
+# =============================================
+# BUILD THE GRADIO UI
+# =============================================
+CUSTOM_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap');
+
+* {
+    font-family: 'Google Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+}
+
+textarea, input, .code-wrap, .cm-editor * {
+    font-family: 'Google Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+}
+"""
+
+with gr.Blocks(title="Cloud Config Agent — Cadence Dev Day", theme=gr.themes.Soft(), css=CUSTOM_CSS) as app:
 
     gr.Markdown("# Cloud Config Right Sizing Agent")
-    gr.Markdown(
-        "Upload a SOW document to generate a chamber configuration for the CICD pipeline. "
-        "Sensitive data is automatically redacted before processing."
-    )
 
-    with gr.Row():
-        with gr.Column():
-            file_input = gr.File(label="Upload SOW (PDF or TXT)", file_types=[".pdf", ".txt"])
-            run_button = gr.Button("Generate Config", variant="primary")
-            sow_output = gr.Textbox(label="Sanitized SOW Text", lines=14, interactive=False)
+    with gr.Tabs():
 
-        with gr.Column():
-            validation_output = gr.Textbox(label="Validation Status", lines=2, interactive=False)
-            confidence_output = gr.Textbox(label="Confidence / Review Flag", interactive=False)
-            accuracy_output = gr.Textbox(label="Accuracy Report", lines=14, interactive=False)
+        # ---- TAB 1: SANITIZE ----
+        with gr.TabItem("Sanitize SOW"):
+            gr.Markdown(
+                "Upload a SOW document to extract text and redact PII. "
+                "Copy the sanitized output into Gemini Enterprise Agent Designer."
+            )
+            with gr.Row():
+                with gr.Column():
+                    sanitize_file = gr.File(label="Upload SOW (PDF or TXT)", file_types=[".pdf", ".txt"])
+                    sanitize_btn = gr.Button("Extract & Sanitize", variant="primary")
 
-        with gr.Column():
-            config_output = gr.Code(label="Generated Config JSON", language="json", interactive=False)
+                with gr.Column():
+                    raw_output = gr.Textbox(label="Raw Extracted Text", lines=12, interactive=False)
 
-    run_button.click(
-        fn=process_sow,
-        inputs=file_input,
-        outputs=[sow_output, config_output, validation_output, confidence_output, accuracy_output],
-    )
+                with gr.Column():
+                    sanitized_output = gr.Textbox(
+                        label="Sanitized Text (copy this into Agent Designer)",
+                        lines=12,
+                        interactive=False,
+                    )
+
+            sanitize_btn.click(
+                fn=sanitize_sow,
+                inputs=sanitize_file,
+                outputs=[raw_output, sanitized_output],
+            )
+
+        # ---- TAB 2: VALIDATE & SCORE ----
+        with gr.TabItem("Validate & Score"):
+            gr.Markdown(
+                "Paste the JSON config from Agent Designer to validate it against the CICD schema "
+                "and score accuracy against a known-good config."
+            )
+            with gr.Row():
+                with gr.Column():
+                    json_input = gr.Textbox(
+                        label="Paste JSON config from Agent Designer",
+                        lines=16,
+                        placeholder='{\n  "customer_name": "...",\n  "environment_tier": "...",\n  ...\n}',
+                    )
+                    eval_file_input = gr.File(
+                        label="Optional: upload known-good config for scoring",
+                        file_types=[".json"],
+                    )
+                    validate_btn = gr.Button("Validate & Score", variant="primary")
+
+                with gr.Column():
+                    val_status = gr.Textbox(label="Validation Status", lines=2, interactive=False)
+                    val_accuracy = gr.HTML(label="Accuracy Report")
+
+            validate_btn.click(
+                fn=validate_with_eval,
+                inputs=[json_input, eval_file_input],
+                outputs=[val_status, val_accuracy],
+            )
+
+        # ---- TAB 3: FULL PIPELINE ----
+        with gr.TabItem("Full Pipeline"):
+            gr.Markdown(
+                "End-to-end: upload a SOW → extract → sanitize → generate config via Gemini → "
+                "validate → score. Runs everything automatically."
+            )
+            with gr.Row():
+                with gr.Column():
+                    full_file = gr.File(label="Upload SOW (PDF or TXT)", file_types=[".pdf", ".txt"])
+                    full_btn = gr.Button("Generate Config", variant="primary")
+                    full_sow = gr.Textbox(label="Sanitized SOW Text", lines=14, interactive=False)
+
+                with gr.Column():
+                    full_validation = gr.Textbox(label="Validation Status", lines=2, interactive=False)
+                    full_confidence = gr.Textbox(label="Confidence / Review Flag", interactive=False)
+                    full_accuracy = gr.HTML(label="Accuracy Report")
+
+                with gr.Column():
+                    full_config = gr.Code(label="Generated Config JSON", language="json", interactive=False)
+
+            full_btn.click(
+                fn=process_sow,
+                inputs=full_file,
+                outputs=[full_sow, full_config, full_validation, full_confidence, full_accuracy],
+            )
 
 if __name__ == "__main__":
     app.launch(server_name="127.0.0.1", server_port=7860, share=False)
