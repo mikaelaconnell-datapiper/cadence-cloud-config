@@ -1,20 +1,21 @@
 """
 Station 1: PDF Text Extraction
 ================================
-This file does ONE thing: takes a PDF file and returns all the text inside it.
+This file does one thing: takes a PDF file and returns all the text inside it.
 
-WHY DO WE NEED THIS?
-The AI (Gemini) can't read PDF files directly. It only understands plain text.
-So before we can ask the AI to analyze a SOW document, we need to convert
-the PDF into a string of text.
+PURPOSE:
+AI models like Gemini can read PDFs directly, but if the goal is to redact
+sensitive information before the model sees the content, the text needs to be
+extracted first. Extracting to plain text allows the sanitizer to find and
+replace PII using pattern matching.
 
 HOW IT WORKS:
 1. Try PyMuPDF first (better at handling tables and complex layouts)
 2. If PyMuPDF returns nothing, fall back to pypdf (pure Python, more portable)
-3. Normalize the whitespace so it's clean for the AI
+3. Normalize the whitespace so it's clean for downstream processing
 4. Return the text string
 
-LIBRARIES WE USE:
+LIBRARIES USED:
 - PyMuPDF (imported as 'fitz') — best quality extraction
 - pypdf — backup option, pure Python so it always works
 """
@@ -30,9 +31,9 @@ def _normalize_whitespace(text):
     """
     Cleans up messy whitespace that PDF extraction often produces.
 
-    PDFs store text in weird ways — sometimes there are null characters,
-    extra spaces from column layouts, or tons of blank lines. This function
-    tidies all that up so the text is clean for the AI prompt.
+    PDFs store text in inconsistent ways — sometimes there are null characters,
+    extra spaces from column layouts, or excessive blank lines. This function
+    tidies that up so the text is clean for the sanitizer and the AI prompt.
     """
     # Replace null characters (sometimes hidden in PDFs) with spaces
     text = text.replace("\x00", " ")
@@ -48,15 +49,15 @@ def _extract_with_pymupdf(filepath):
     Primary extraction using PyMuPDF.
 
     PyMuPDF is the best PDF text extractor — it handles tables, columns,
-    and complex layouts better than most alternatives. We try this first.
+    and complex layouts better than most alternatives. This is tried first.
     """
     try:
-        import fitz  # This is PyMuPDF — "fitz" is just its internal name
+        import fitz  # PyMuPDF — "fitz" is just its internal package name
     except ImportError:
         logger.warning("PyMuPDF is not installed; skipping primary extraction.")
         return ""
 
-    # Open the PDF file (like double-clicking it)
+    # Open the PDF file
     document = fitz.open(filepath)
     pages = []
 
@@ -64,7 +65,7 @@ def _extract_with_pymupdf(filepath):
     for page_number, page in enumerate(document, start=1):
         page_text = page.get_text("text").strip()
         if page_text:
-            # Label each page so we can see where text came from
+            # Label each page so it's clear where the text came from
             pages.append(f"Page {page_number}\n{page_text}")
 
     document.close()
@@ -75,7 +76,7 @@ def _extract_with_pypdf(filepath):
     """
     Fallback extraction using pypdf.
 
-    If PyMuPDF fails or returns empty text, we try pypdf as a backup.
+    If PyMuPDF fails or returns empty text, pypdf is tried as a backup.
     It's pure Python so it always works, but produces slightly lower
     quality output for complex PDFs.
     """
@@ -104,7 +105,7 @@ def extract_text_from_pdf(pdf_path):
         pdf_path (str): The path to the PDF file
 
     Returns:
-        str: All the text from the PDF, cleaned up and ready for the AI
+        str: All the text from the PDF, cleaned up and ready for processing
     """
     try:
         # Try PyMuPDF first (better quality)
@@ -130,10 +131,10 @@ def extract_text_from_pdf(pdf_path):
 
 def extract_text_from_txt(txt_path):
     """
-    For our demo, the sample SOWs are .txt files (not real PDFs).
-    This function reads a plain text file.
+    Reads a plain text SOW file.
 
-    On dev day with real Cadence data, you'd use extract_text_from_pdf() instead.
+    The sample SOWs in the data/ directory are .txt files.
+    On dev day with real Cadence data, extract_text_from_pdf() handles the PDFs.
     """
     with open(txt_path, "r") as f:
         return f.read()
@@ -141,11 +142,11 @@ def extract_text_from_txt(txt_path):
 
 def extract_text(file_path):
     """
-    Smart function that checks the file type and uses the right extraction method.
+    Routes to the correct extraction method based on file type.
 
     This is the function the rest of the app calls — it handles both
-    PDFs and text files so we can test with .txt files now and swap to
-    real PDFs on dev day without changing any other code.
+    PDFs and text files so testing can use .txt files and dev day can use
+    real PDFs without changing any other code.
     """
     if file_path.endswith(".pdf"):
         return extract_text_from_pdf(file_path)
@@ -156,15 +157,12 @@ def extract_text(file_path):
 
 
 # ---- TESTING ----
-# This block only runs if you execute this file directly:
+# This block only runs when executing this file directly:
 #   python3 extract_pdf.py
-# It does NOT run when another file imports this one.
+# It does NOT run when another file imports this module.
 
 if __name__ == "__main__":
-    # Test it on one of our sample SOWs
     text = extract_text("data/reference_sows/sow_acme_corp.txt")
-
-    # Print the first 500 characters so we can see it worked
     print("=== Extracted Text (first 500 chars) ===\n")
     print(text[:500])
     print(f"\n=== Total length: {len(text)} characters ===")

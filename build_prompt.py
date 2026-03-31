@@ -1,16 +1,16 @@
 """
 Station 2: Prompt Builder
 ==========================
-This file builds the message (prompt) we send to the AI.
+This file builds the message (prompt) that gets sent to the AI.
 
 THE BIG IDEA:
-Imagine you're training a new employee to do a task. You wouldn't just say
-"figure it out." You'd show them 3 examples of completed work first, then say
-"now do this one the same way." That's exactly what few-shot prompting is.
+Imagine training a new employee to do a task. Instead of saying "figure it out,"
+showing them 3 examples of completed work first and then saying "now do this one
+the same way" is much more effective. That's exactly what few-shot prompting is.
 
 The prompt has 2 parts:
-1. SYSTEM PROMPT — the "instructions" and examples (stays the same every time)
-2. USER PROMPT — the new SOW we want the AI to process (changes each time)
+1. SYSTEM PROMPT — the instructions and examples (stays the same every time)
+2. USER PROMPT — the new SOW to process (changes each time)
 """
 
 import json
@@ -22,8 +22,8 @@ def load_reference_examples(sow_dir, config_dir):
     """
     Loads all the reference SOW/config pairs from the data folders.
 
-    This is like gathering your "training examples" to show the AI.
-    Each example is a pair: (SOW text, config JSON).
+    These are the "training examples" shown to the AI — each one is a pair
+    of (SOW text, config JSON) that demonstrates the expected input→output mapping.
 
     Parameters:
         sow_dir: folder with reference SOW files
@@ -79,17 +79,17 @@ def load_schema(schema_path):
 
 def build_system_prompt(examples, schema):
     """
-    Builds the system prompt — the "instructions" for the AI.
+    Builds the system prompt — the instructions for the AI.
 
-    This is the most critical function in the whole project. The quality of
-    this prompt directly determines how good the AI's output will be.
+    This is the most critical function in the project. The quality of this prompt
+    directly determines how good the AI's output will be.
 
-    The system prompt says:
-    1. WHO you are (a cloud config expert)
-    2. WHAT you do (parse SOWs, generate configs)
-    3. WHAT FORMAT to use (the JSON schema)
-    4. HERE ARE EXAMPLES (the few-shot examples)
-    5. RULES to follow (validation, no hallucination, etc.)
+    The system prompt tells the AI:
+    1. Its role (a cloud config expert)
+    2. Its task (parse SOWs, generate configs)
+    3. The output format (the JSON schema)
+    4. Reference examples (the few-shot examples)
+    5. Rules to follow (validation, no hallucination, etc.)
     """
 
     # Start with the role and task description
@@ -136,9 +136,9 @@ Study these carefully to understand the mapping pattern.
 
 def build_user_prompt(new_sow_text):
     """
-    Builds the user prompt — the new SOW the AI needs to process.
+    Builds the user prompt — the new SOW that needs to be processed.
 
-    This is simple — it's just the new SOW text with a clear instruction.
+    This is straightforward — just the SOW text with a clear instruction.
     """
     prompt = f"""Analyze the following SOW document and generate the chamber configuration JSON.
 Output ONLY the JSON — no other text.

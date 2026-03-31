@@ -1,11 +1,13 @@
 """
 Station 5: Accuracy Scoring
 ==============================
-This file compares the AI's generated config to the known-good config
-and tells you how accurate it was, field by field.
+This file compares the AI's generated config to a known-good config
+and reports accuracy field by field.
 
-Think of it like grading a test — for each field, did the AI get the
-right answer? What's the overall score?
+PURPOSE:
+Knowing that the JSON is valid (passes schema) is not enough — the values
+also need to be correct. This module checks each critical field against the
+expected answer and produces a percentage score and detailed report.
 """
 
 import json
@@ -21,16 +23,16 @@ def score_config(generated, expected):
 
     Returns:
         dict with:
-            - total_fields: how many fields we checked
-            - matched_fields: how many the AI got right
+            - total_fields: how many fields were checked
+            - matched_fields: how many matched the expected value
             - accuracy: percentage (0-100)
             - details: list of per-field results
     """
 
     details = []
 
-    # These are the critical fields we care most about
-    # (from the use case requirements)
+    # Critical fields to evaluate
+    # Each tuple is (field_name, parent_key) — parent_key is None for top-level fields
     critical_fields = [
         ("environment_tier", None),
         ("instance_type", "compute"),
@@ -53,6 +55,7 @@ def score_config(generated, expected):
 
     for field_name, parent_key in critical_fields:
         # Get the value from both configs
+        # If the field is nested (e.g., compute.instance_type), look inside the parent first
         if parent_key:
             gen_value = generated.get(parent_key, {}).get(field_name)
             exp_value = expected.get(parent_key, {}).get(field_name)
@@ -60,7 +63,7 @@ def score_config(generated, expected):
             gen_value = generated.get(field_name)
             exp_value = expected.get(field_name)
 
-        # Compare them
+        # Compare the values
         is_match = gen_value == exp_value
         if is_match:
             matched += 1
@@ -73,7 +76,7 @@ def score_config(generated, expected):
             "match": is_match,
         })
 
-    # Also check services (just count and names)
+    # Also check services (compare sorted service name lists)
     gen_services = sorted([s["service_name"] for s in generated.get("services", [])])
     exp_services = sorted([s["service_name"] for s in expected.get("services", [])])
 
@@ -101,8 +104,7 @@ def score_config(generated, expected):
 
 def format_report(score_result):
     """
-    Takes the score result and returns a nicely formatted string report.
-    This is what we'll display in the Gradio UI as plain text (fallback).
+    Returns the accuracy report as plain text (fallback format).
     """
     lines = []
     lines.append(f"ACCURACY: {score_result['accuracy']}% ({score_result['matched_fields']}/{score_result['total_fields']} fields)")

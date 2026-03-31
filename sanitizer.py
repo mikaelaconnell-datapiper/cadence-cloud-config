@@ -1,21 +1,22 @@
 """
 Text Sanitizer — PII Redaction
 ================================
-This file strips sensitive customer data BEFORE we send the SOW text to the AI.
+This file strips sensitive customer data from SOW text before it is sent to
+the AI model.
 
-WHY DO WE NEED THIS?
-Cadence's primary concern is data privacy. Customer SOWs contain real names,
-emails, phone numbers, addresses, account IDs, and pricing info. We do NOT
-want any of that going to Gemini.
+PURPOSE:
+Data privacy is a primary concern. Customer SOWs contain real names, emails,
+phone numbers, addresses, account IDs, and pricing info. None of that should
+reach the model.
 
-WHAT IT KEEPS:
+WHAT GETS PRESERVED:
 - Service counts ("14 microservices")
 - Storage requirements ("500 GB of SSD storage")
 - Environment references ("production", "staging")
 - HA/DR language ("high availability required")
 - Region references ("us-central1")
 
-WHAT IT REDACTS:
+WHAT GETS REDACTED:
 - Email addresses
 - Phone numbers
 - Street addresses
@@ -62,9 +63,8 @@ def sanitize_text(text):
     """
     Takes raw SOW text and returns a sanitized version with PII redacted.
 
-    The redacted text is safe to send to Gemini because all customer-identifying
-    info has been replaced with [REDACTED_*] tags. The sizing-relevant details
-    that the AI needs to generate the config are preserved.
+    All customer-identifying info is replaced with [REDACTED_*] tags.
+    Sizing-relevant details needed for config generation are preserved.
 
     Parameters:
         text (str): The raw text extracted from the SOW PDF

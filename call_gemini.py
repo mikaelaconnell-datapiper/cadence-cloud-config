@@ -1,14 +1,14 @@
 """
 Station 3: Call Gemini
 =======================
-This file is where we send our prompt to Gemini and get a response.
+This file sends the prompt to Gemini and gets a response back.
 
 HOW IT WORKS:
 1. First checks for a Gemini API key (free, no GCP needed) — simplest path
 2. If no API key, checks for a GCP project and uses Vertex AI
 3. If neither is available, falls back to the mock so the demo still works
-4. After getting a response, it validates against the schema
-5. If validation fails, it tries a REPAIR step — sends the error back to Gemini
+4. After getting a response, validation happens in validate_output.py
+5. If validation fails, a REPAIR step sends the error back to Gemini
    and asks it to fix the JSON
 
 THREE WAYS TO CALL GEMINI (in priority order):
@@ -16,10 +16,10 @@ THREE WAYS TO CALL GEMINI (in priority order):
 - Vertex AI — requires GCP project + IAM roles + auth
 - Mock — heuristic fallback, always works, no external calls
 
-WHY THE FALLBACK?
-On dev day, if the API key isn't working or the network is slow, you don't want
-the demo to just crash. The fallback gives you a working pipeline to show while
-you troubleshoot.
+REASON FOR THE FALLBACK:
+On dev day, if the API key isn't working or the network is slow, the demo
+shouldn't just crash. The fallback provides a working pipeline to demonstrate
+while troubleshooting the real connection.
 """
 
 import json
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def _clean_response_text(response_text):
     """
     Sometimes the AI wraps its JSON in markdown code fences like ```json ... ```.
-    This strips those off so we can parse the raw JSON.
+    This strips those off so the raw JSON can be parsed.
     """
     cleaned = response_text.strip()
     if cleaned.startswith("```json"):
@@ -50,7 +50,7 @@ def call_gemini_api(system_prompt, user_prompt):
     Calls Gemini using the free Developer API (via google-genai SDK).
 
     This is the simplest way to call Gemini — just an API key, no GCP project,
-    no IAM roles, no gcloud auth. Get your key at aistudio.google.com/apikey.
+    no IAM roles, no gcloud auth. Get a key at aistudio.google.com/apikey.
 
     Uses gemini-2.5-flash which is available on the free tier with generous
     rate limits (15 requests/min, 1500/day).
@@ -100,12 +100,11 @@ def call_gemini_vertex(system_prompt, user_prompt):
 
 def call_gemini_mock(system_prompt, user_prompt):
     """
-    MOCK VERSION — returns a fake response for testing.
+    MOCK VERSION — returns a synthetic response for testing.
 
-    This pretends to be Gemini. It reads keywords from the SOW text
-    and returns a reasonable-looking config. This lets us test the
-    entire app flow (UI -> extraction -> prompt -> response -> validation)
-    without needing any API access.
+    This simulates Gemini by reading keywords from the SOW text and returning
+    a reasonable-looking config. It allows the entire app flow to be tested
+    (UI → extraction → prompt → response → validation) without any API access.
     """
     sow_text = user_prompt.lower()
 
@@ -176,11 +175,11 @@ def call_gemini_mock(system_prompt, user_prompt):
 
 def repair_config(invalid_json_str, validation_error, schema):
     """
-    SCHEMA REPAIR — if the AI's output fails validation, send the error
-    back to Gemini and ask it to fix just the broken parts.
+    SCHEMA REPAIR — if the AI's output fails validation, the error is sent
+    back to Gemini with a request to fix just the broken parts.
 
     Tries the API key first, then Vertex AI. If neither is available,
-    returns the original config as-is.
+    the original config is returned as-is.
     """
     api_key = os.getenv("GEMINI_API_KEY", "")
     project = os.getenv("GOOGLE_CLOUD_PROJECT", "")
