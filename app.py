@@ -372,4 +372,4 @@ with gr.Blocks(title="Cloud Config Agent — Cadence Dev Day", theme=gr.themes.S
             )
 
 if __name__ == "__main__":
-    app.launch(server_name="127.0.0.1", server_port=7860, share=False)
+    app.launch(server_name="127.0.0.1", server_port=7860, share=True)
