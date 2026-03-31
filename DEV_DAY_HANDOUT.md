@@ -1,130 +1,134 @@
-# Cloud Config Right Sizing Agent — Dev Day Guide
+# Cloud Config Right Sizing Agent — Dev Day Reference
 
-## What Are We Building?
+## What We're Building
 
-Cadence engineers manually read customer SOW (Statement of Work) documents and translate infrastructure requirements into cloud configuration files for the CICD pipeline. This process is slow, error-prone, and doesn't scale.
+An AI agent that reads customer SOW (Statement of Work) documents and generates cloud infrastructure configuration JSON for the CICD deployment pipeline.
 
-We're building an **AI agent** that automates this:
-
-**SOW PDF in → Cloud Config JSON out**
-
-The agent reads the SOW, extracts infrastructure requirements, and generates a validated configuration JSON — with PII automatically redacted before anything reaches the model.
+**SOW Document → Agent → Validated Config JSON**
 
 ---
 
-## Architecture: 5 Stations
+## Priorities
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Station 1  │     │  Sanitizer  │     │  Station 2  │     │  Station 3  │     │  Station 4  │
-│  Extract    │────▶│  Redact PII │────▶│  Build      │────▶│  Call       │────▶│  Validate   │
-│  PDF Text   │     │             │     │  Prompt     │     │  Gemini     │     │  JSON       │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └──────┬──────┘
-                                                                                       │
-                                                                                       ▼
-                                                                                ┌─────────────┐
-                                                                                │  Station 5  │
-                                                                                │  Score      │
-                                                                                │  Accuracy   │
-                                                                                └─────────────┘
-```
+1. **Privacy** — Customer PII must be handled carefully
+2. **Output quality** — JSON must align to the target schema
+3. **Clear demo** — 3 working end-to-end runs with a compelling story
 
-| Station | File | What It Does |
+---
+
+## Working Approach
+
+| Path | Tool | Purpose |
 |---|---|---|
-| 1. Extract | `extract_pdf.py` | Pulls text from the SOW PDF |
-| Sanitize | `sanitizer.py` | Redacts emails, phones, addresses, pricing before model input |
-| 2. Prompt | `build_prompt.py` | Builds few-shot prompt with reference examples + schema |
-| 3. Generate | `call_gemini.py` | Sends prompt to Gemini via Vertex AI (or falls back to mock) |
-| 4. Validate | `validate_output.py` | Checks output against the CICD JSON schema |
-| 5. Score | `score_accuracy.py` | Compares output to known-good config, field by field |
+| **Primary** | Gemini Enterprise Agent Designer | Build the agent, generate config JSON |
+| **Supporting** | Python/Gradio app (optional) | Validation, scoring, privacy/preprocessing discussion |
+
+Focus on one working path first, then refine quality and demo flow.
 
 ---
 
-## Setup Instructions
+## Agent Designer Workflow
 
-### 1. Fork and clone the repo
+### Creating the Agent
+1. Open Gemini Enterprise → Agents → + New agent
+2. Describe the agent's purpose: parse SOW documents and generate config JSON
+3. Include the target JSON schema in the instructions
+4. Upload reference SOW/config examples to improve accuracy
+5. Test with an approved SOW document
+
+### Iterating
+- Review the JSON output — does it match the expected schema?
+- Refine instructions based on what the agent gets wrong
+- Add more examples to cover edge cases
+- Re-test and compare accuracy
+
+---
+
+## Target JSON Schema Fields
+
+| Field | Type | Required |
+|---|---|---|
+| customer_name | string | yes |
+| environment_tier | small / medium / large / enterprise | yes |
+| compute.instance_type | string (e.g., n2-standard-4) | yes |
+| compute.instance_count | integer | yes |
+| compute.vcpus_per_instance | integer | yes |
+| compute.memory_gb_per_instance | integer | yes |
+| storage.storage_type | pd-standard / pd-ssd / pd-balanced | yes |
+| storage.total_storage_gb | integer | yes |
+| storage.iops_required | integer | yes |
+| networking.vpc_cidr | string (e.g., 10.0.0.0/16) | yes |
+| networking.subnet_count | integer | yes |
+| networking.load_balancer | boolean | yes |
+| services | array of {service_name, enabled, configuration} | yes |
+| high_availability | boolean | no |
+| backup_enabled | boolean | no |
+| estimated_users | integer | no |
+
+*This schema may be updated on dev day based on the actual CICD pipeline requirements.*
+
+---
+
+## Validation Checklist
+
+When reviewing agent output, check:
+
+- [ ] Valid JSON (no syntax errors)
+- [ ] All required fields present
+- [ ] Data types correct (strings, numbers, booleans)
+- [ ] Enum values valid (environment_tier, storage_type)
+- [ ] Values make sense for the SOW (right instance size, storage amount, etc.)
+
+---
+
+## Privacy Handling
+
+**The concern:** Customer SOWs contain sensitive information — names, emails, phone numbers, account IDs, pricing.
+
+**For today:** We're using approved SOW content provided by the Cadence team. The team has confirmed what content is safe to process through Gemini Enterprise.
+
+**For production:** A preprocessing step would redact PII before any content reaches the model. This ensures the model only sees infrastructure requirements, never customer-identifying information.
+
+---
+
+## Showcase Story (for the afternoon demo)
+
+1. **Problem:** Manual SOW parsing is slow and error-prone
+2. **Solution:** Low-code Gemini Enterprise agent generates chamber config JSON
+3. **Controls:** Privacy-aware handling, structured output, validation against expected schema
+4. **Outcome:** Faster path from approved SOW to deployment-ready config
+5. **Next step:** Productionization with preprocessing, validation, and pipeline integration
+
+---
+
+## Team Roles
+
+| Role | Responsibility |
+|---|---|
+| Agent workflow owner | Builds and updates the Agent Designer agent |
+| Data / examples owner | Manages SOWs, known-good outputs, schema, and reference examples |
+| Validation / scoring owner | Checks generated JSON against schema and expected outputs |
+| Privacy / narrative owner | Documents how data is handled and how to explain limitations |
+| Demo owner | Prepares the final 3 runs and showcase flow |
+
+If the team is small, combine roles.
+
+---
+
+## Starter Code (Optional)
+
+If you want to run validation and scoring locally:
 
 ```
 https://github.com/mikaelaconnell-datapiper/cadence-cloud-config
 ```
 
-Fork it to your GitHub, then:
-
 ```bash
 git clone <your-fork-url>
 cd cadence-cloud-config
-```
-
-### 2. Create virtual environment and install
-
-```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 3. Configure GCP access (if available)
-
-```bash
-cp .env.example .env
-# Edit .env with the project ID and region
-gcloud auth application-default login
-```
-
-If GCP access isn't ready yet, the app runs with a mock generator — no configuration needed.
-
-### 4. Run the app
-
-```bash
 python app.py
+# Open http://localhost:7860
 ```
-
-Open **http://localhost:7860** in your browser.
-
----
-
-## Try It Out
-
-1. Upload a sample SOW PDF (provided at the table)
-2. Click **Generate Config**
-3. Review the output:
-   - **Sanitized SOW Text** — Confirm PII was redacted
-   - **Generated Config JSON** — The infrastructure configuration
-   - **Validation Status** — Did it pass schema validation?
-   - **Confidence** — High / Medium / Low
-   - **Accuracy Report** — Field-by-field comparison (if eval config exists)
-
----
-
-## Key Files to Explore
-
-| If you want to... | Look at... |
-|---|---|
-| Change what PII gets redacted | `sanitizer.py` |
-| Modify the prompt or add examples | `build_prompt.py` + `data/reference_sows/` |
-| Change the output schema | `config_schema.json` |
-| Adjust accuracy scoring fields | `score_accuracy.py` |
-| Switch between mock and real Gemini | `call_gemini.py` |
-| Modify the UI layout | `app.py` |
-
----
-
-## Stretch Goals
-
-If you finish early, try:
-
-- Add a new reference SOW/config pair to `data/reference_sows/` and `data/reference_configs/`
-- Add a new field to `config_schema.json` and update the few-shot examples
-- Modify `sanitizer.py` to catch additional PII patterns
-- Add a diff view comparing generated vs expected config
-- Connect to GCS to load SOW files from a bucket instead of uploading manually
-
----
-
-## GCP Requirements
-
-| Requirement | Details |
-|---|---|
-| APIs to enable | `aiplatform.googleapis.com`, `storage.googleapis.com` |
-| IAM roles | Vertex AI User (`roles/aiplatform.user`), Storage Object Viewer (`roles/storage.objectViewer`) |
-| Auth | `gcloud auth application-default login` or service account |

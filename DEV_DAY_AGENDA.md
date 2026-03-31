@@ -1,133 +1,128 @@
-# Cloud Config Right Sizing Agent — Dev Day Agenda
+# Cloud Config Dev Day Plan
 
-**Date:** April 2, 2026
-**Location:** Google SF Office
-**Use Case 4:** Cloud Config Right Sizing Agent (Low Code)
+## Objective
 
----
-
-## 9:00 AM — Kickoff (30 min)
-
-- Welcome and introductions
-- **The problem:** Engineers manually read SOW documents and hand-build cloud configs for the CICD pipeline. This is slow, inconsistent, and doesn't scale.
-- **The solution:** An AI agent that reads a SOW and generates a validated config JSON automatically.
-- **Architecture overview:** 5-station pipeline
-  - Extract text from SOW → Sanitize PII → Generate config via Gemini → Validate against schema → Score accuracy
-- **Data privacy approach:** Customer PII is redacted before any content reaches the model
-- **Goals for today:**
-  1. Build a working agent in Gemini Enterprise Agent Designer
-  2. Test with real SOW documents
-  3. Validate and score the output
-  4. Discuss the production path
+Build and demo a low-code Cloud Config agent that takes an approved SOW document and returns chamber configuration JSON aligned to the CICD schema. Priorities for the day are **privacy**, **output quality**, and a **clear demo narrative**.
 
 ---
 
-## 9:30 AM — Build Session 1: Agent Designer (1.5 hours)
+## Target Deliverables
 
-### Create the Agent (30 min)
-- Open Gemini Enterprise → Agent Designer
-- Create a new agent with instructions for SOW parsing and config generation
-- Define the target JSON schema (fields, types, required vs optional)
-- Set the model and configure output format
-
-### Add Reference Examples (20 min)
-- Upload sample SOW/config pairs as reference materials
-- Update agent instructions to use few-shot examples
-- Show how examples improve output quality
-
-### Test with SOW Documents (30 min)
-- Upload SOW documents to the agent
-- Review the generated config JSON
-- Identify what the agent gets right and what needs tuning
-- Iterate on the agent instructions based on results
+- Working Gemini Enterprise Agent Designer agent
+- At least 3 end-to-end test runs with approved SOWs
+- JSON output aligned to the target schema
+- Basic validation and accuracy review against known-good outputs
+- Clear explanation of privacy handling and production next steps
 
 ---
 
-## 11:00 AM — Break (15 min)
+## Working Approach
+
+- **Primary build path:** Gemini Enterprise Agent Designer
+- **Supporting path:** Lightweight Python/Gradio tooling for validation, scoring, and optional privacy/preprocessing discussion if needed
+- Focus on one working path first, then refine quality and demo flow
 
 ---
 
-## 11:15 AM — Build Session 2: Privacy and Validation (1.5 hours)
+## Schedule
 
-### Data Privacy: PII Sanitization (30 min)
-- Demo the sanitization layer — show a raw SOW vs the sanitized version
-- Walk through what gets redacted (emails, phones, names, account IDs, pricing)
-- Walk through what stays (service counts, storage sizes, compute specs, environment type)
-- Discuss: should sanitization happen before or inside the agent?
+### 9:30 - 10:00 — Setup and Alignment
 
-### Output Validation (30 min)
-- Take the config JSON from Agent Designer
-- Validate it against the CICD JSON schema
-- Review any validation errors and what they mean
-- Show the schema repair approach — send errors back to the model for self-correction
+- Confirm inputs, success criteria, and owners
+- Verify what artifacts are available:
+  - Approved SOWs
+  - Known-good outputs
+  - Target JSON schema
+  - Critical fields for evaluation
+- Confirm how SOWs will be provided in Gemini Enterprise
+- Align on the MVP output format
 
-### Accuracy Scoring (30 min)
-- Compare generated configs against known-good configs
-- Review field-level accuracy report
-- Identify which fields the agent gets right consistently vs where it struggles
-- Discuss what accuracy threshold is acceptable for production
+### 10:00 - 10:45 — Build the Agent
+
+- Build the first version of the agent in Agent Designer
+- Load instructions, schema guidance, and reference examples
+- Test the initial workflow on the first SOW
+- Check whether output is returning usable JSON
+
+### 10:45 - 11:15 — Refine the Agent
+
+- Improve instructions and examples based on first test output
+- Tighten JSON output expectations
+- Identify any missing fields or repeated failure patterns
+
+### 11:15 - 12:00 — Test with Additional SOWs
+
+- Run additional SOWs through the agent
+- Compare outputs to expected configs
+- Capture where the agent performs well vs where it drifts
+- Decide what to refine after lunch
+
+### 12:00 - 1:00 — Lunch / Regroup
+
+- Consolidate notes on:
+  - Prompt changes
+  - Privacy discussion points
+  - Output issues
+  - Open blockers
+
+### 1:00 - 2:00 — Validation and Scoring
+
+- Review generated JSON against schema
+- Compare outputs to known-good configs on critical fields
+- Record field-level accuracy observations
+
+### 2:00 - 2:45 — Final Refinement
+
+- Improve agent instructions/examples one last time
+- Select 3 demo-ready SOWs
+- Prepare backup example in case one run is weak
+
+### 2:45 - 3:00 — Demo Prep
+
+- Lock the final workflow
+- Assign speakers / flow for showcase
+- Prepare the privacy and roadmap explanation
 
 ---
 
-## 12:45 PM — Lunch (1 hour)
+## Team Roles
 
----
-
-## 1:45 PM — Build Session 3: Refinement and Integration (1.5 hours)
-
-### Improve Accuracy (45 min)
-- Refine agent instructions based on morning results
-- Add more reference examples for edge cases
-- Test with additional SOW documents
-- Track accuracy improvements across iterations
-
-### Production Path Discussion (45 min)
-- Agent Designer for prototyping vs coded pipeline for CICD integration
-- Where does the config JSON go after generation? (GCS bucket → CICD pipeline)
-- How to handle low-confidence configs (human review workflow)
-- Security considerations for production deployment
-- Next steps and timeline
-
----
-
-## 3:15 PM — Wrap-Up (30 min)
-
-- End-to-end demo of the final solution
-- Review accuracy results across all test SOWs
-- Summary of what was built and key decisions made
-- Action items and next steps
-- Q&A
-
----
-
-## Quick Reference
-
-| Resource | Location |
+| Role | Responsibility |
 |---|---|
-| Starter code (optional) | `github.com/mikaelaconnell-datapiper/cadence-cloud-config` |
-| Agent Designer | Gemini Enterprise → Agents → + New agent |
-| JSON schema | `config_schema.json` in the repo |
-| Sample SOW/config pairs | `data/` directory in the repo |
+| **Agent workflow owner** | Builds and updates the Agent Designer agent |
+| **Data / examples owner** | Manages SOWs, known-good outputs, schema, and reference examples |
+| **Validation / scoring owner** | Checks generated JSON against schema and expected outputs |
+| **Privacy / narrative owner** | Documents how data is handled and how to explain limitations |
+| **Demo owner** | Prepares the final 3 runs and showcase flow |
+
+If the team is small, combine roles. If the team is larger, assign 1-2 people per workstream.
 
 ---
 
-## Target JSON Schema Fields
+## Core Messages To Keep Repeating
 
-| Field | Type | Required |
-|---|---|---|
-| customer_name | string | yes |
-| environment_tier | small / medium / large / enterprise | yes |
-| compute.instance_type | string (e.g., n2-standard-4) | yes |
-| compute.instance_count | integer | yes |
-| compute.vcpus_per_instance | integer | yes |
-| compute.memory_gb_per_instance | integer | yes |
-| storage.storage_type | pd-standard / pd-ssd / pd-balanced | yes |
-| storage.total_storage_gb | integer | yes |
-| storage.iops_required | integer | yes |
-| networking.vpc_cidr | string (e.g., 10.0.0.0/16) | yes |
-| networking.subnet_count | integer | yes |
-| networking.load_balancer | boolean | yes |
-| services | array of {service_name, enabled, configuration} | yes |
-| high_availability | boolean | no |
-| backup_enabled | boolean | no |
-| estimated_users | integer | no |
+- Privacy and accuracy are the priorities
+- Low-code first, but output still needs review and validation
+- One working path first, polish second
+- The goal is a convincing MVP, not a production platform in one day
+
+---
+
+## Risks / Fallbacks
+
+| Risk | Fallback |
+|---|---|
+| Agent output is inconsistent | Refine instructions and add better examples |
+| Schema alignment is weak | Tighten expected output structure and validate manually |
+| Privacy concerns block direct document input | Narrow the demo to approved sample content and explain preprocessing as a future step |
+| One SOW performs poorly | Use backup examples for the final showcase |
+
+---
+
+## Showcase Story
+
+1. **Problem:** Manual SOW parsing is slow and error-prone
+2. **Solution:** Low-code Gemini Enterprise agent generates chamber config JSON
+3. **Controls:** Privacy-aware handling, structured output, validation against expected schema
+4. **Outcome:** Faster path from approved SOW to deployment-ready config
+5. **Next step:** Stronger productionization with preprocessing, validation, and pipeline integration if needed
