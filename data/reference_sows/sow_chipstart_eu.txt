@@ -1,0 +1,33 @@
+Chamber Configuration Section
+Platform Provider: AWS
+Chamber Location: AWS Frankfurt
+3rd party licence chamber required: Yes
+Total number of Users: 10
+
+Number of User accounts and their locations:
+5 accounts in Berlin Germany
+5 accounts in Istanbul Turkiye
+
+Hardware requirements:
+1 interactive server
+16 vCPUs, 64 GB RAM
+M6i.4xlarge instance type
+1000 GB backup project storage and up to 1000GB additional scratch storage
+
+1 dedicated instance for dedicated revision control
+
+Software/Licensed Materials:
+3 Virtuoso(R) Schematic Editor L
+3 Virtuoso(R) ADE Assembler
+9 Spectre(R) MMSIM with Spectre X Simulator
+1 Cadence(R) Physical Verification System Design Rule Checker XL
+1 Cadence Quantus Extraction - L
+1 Voltus-XFI Custom Power Integrity Solution
+1 EMX Planar 3D Solver V8
+2 Cadence Physical Verification System Results Viewer
+2 Virtuoso Advanced Node Options for Layout
+1 Cadence(R) iPegasus(TM) DRC for Virtuoso Studio
+1 Cadence(R) iPegasus(TM) FILL for Virtuoso Studio
+
+Additional Customer Services:
+2 Customer provided PDKs

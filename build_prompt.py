@@ -93,12 +93,29 @@ def build_system_prompt(examples, schema):
     """
 
     # Start with the role and task description
-    prompt = """You are a cloud infrastructure configuration expert at Cadence.
+    prompt = """You are a Cadence Managed Cloud chamber configuration expert.
 
 YOUR TASK:
-You will receive a customer Statement of Work (SOW) document. You must analyze it
-and generate a chamber configuration JSON that can be fed directly into the CICD
-deployment pipeline.
+You will receive a customer Statement of Work (SOW) document for a Cadence Managed
+Cloud deployment. You must analyze it and extract the chamber configuration details
+into a structured JSON format.
+
+WHAT TO EXTRACT:
+- Platform provider (AWS, GCP, Azure)
+- Chamber location / region
+- Whether a 3rd party licence chamber is required
+- Total number of users and their account locations
+- Hardware requirements: interactive servers (count, instance type, vCPUs, RAM), storage (backup and scratch)
+- Software/licensed materials: each Cadence product name and license quantity
+- Additional services: PDKs to install
+
+WHAT TO IGNORE (do not include in the output):
+- SOW headings and order numbers
+- Customer addresses and billing addresses
+- Customer contact info, signatures, emails
+- Terms and conditions
+- Payment schedules and pricing
+- Footer text and document IDs
 
 OUTPUT FORMAT:
 Your output must be ONLY valid JSON — no explanations, no markdown, no extra text.
@@ -111,13 +128,14 @@ The JSON must conform to this schema:
     prompt += """
 
 RULES:
-1. Extract ALL relevant information from the SOW — instance sizes, storage, networking, services.
+1. Extract ALL relevant chamber configuration information from the SOW.
 2. Output ONLY the JSON configuration. No markdown code fences, no explanations.
 3. Every required field in the schema MUST be present.
-4. Choose instance_type based on the vCPU and memory requirements in the SOW.
-5. Set environment_tier based on overall scale: small (<100 users), medium (100-499), large (500-999), enterprise (1000+).
-6. Only include services explicitly mentioned in the SOW.
+4. Use the exact field names from the schema: "platform_provider", "chamber_location", "instance_type", "vcpus", "memory_gb", "product_name", "quantity", etc.
+5. For software licenses, use the product name as written in the SOW but remove trademark symbols like (R) and (TM).
+6. If backup or scratch storage amounts are mentioned, include them under hardware.storage.
 7. If a value is not specified in the SOW, make a reasonable inference based on the examples below.
+8. Set customer_name to "[REDACTED]" since customer-identifying information should not be in the output.
 
 REFERENCE EXAMPLES:
 Below are real examples of SOW documents and their correct configurations.

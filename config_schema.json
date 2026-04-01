@@ -1,114 +1,109 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Chamber Configuration",
-  "description": "Configuration for deploying a customer environment (chamber) based on SOW requirements",
+  "description": "Configuration for deploying a Cadence Managed Cloud chamber based on SOW requirements",
   "type": "object",
   "required": [
-    "customer_name",
-    "environment_tier",
-    "compute",
-    "storage",
-    "networking",
-    "services"
+    "platform_provider",
+    "chamber_location",
+    "total_users",
+    "user_accounts",
+    "hardware",
+    "software_licenses"
   ],
   "properties": {
     "customer_name": {
       "type": "string",
-      "description": "Name of the customer from the SOW"
+      "description": "Name of the customer (redacted if sensitive)"
     },
-    "environment_tier": {
+    "platform_provider": {
       "type": "string",
-      "enum": ["small", "medium", "large", "enterprise"],
-      "description": "Overall environment size tier"
+      "enum": ["AWS", "GCP", "Azure"],
+      "description": "Cloud provider for the chamber"
     },
-    "compute": {
-      "type": "object",
-      "required": ["instance_type", "instance_count", "vcpus_per_instance", "memory_gb_per_instance"],
-      "properties": {
-        "instance_type": {
-          "type": "string",
-          "description": "GCP machine type, e.g. e2-standard-4, n2-standard-8"
-        },
-        "instance_count": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "vcpus_per_instance": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "memory_gb_per_instance": {
-          "type": "integer",
-          "minimum": 1
-        }
-      }
+    "chamber_location": {
+      "type": "string",
+      "description": "Region or location for the chamber (e.g., AWS Frankfurt)"
     },
-    "storage": {
-      "type": "object",
-      "required": ["storage_type", "total_storage_gb", "iops_required"],
-      "properties": {
-        "storage_type": {
-          "type": "string",
-          "enum": ["pd-standard", "pd-ssd", "pd-balanced"]
-        },
-        "total_storage_gb": {
-          "type": "integer",
-          "minimum": 10
-        },
-        "iops_required": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
+    "third_party_licence_chamber_required": {
+      "type": "boolean",
+      "description": "Whether a 3rd party licence chamber is required"
     },
-    "networking": {
-      "type": "object",
-      "required": ["vpc_cidr", "subnet_count", "load_balancer"],
-      "properties": {
-        "vpc_cidr": {
-          "type": "string",
-          "description": "CIDR block for the VPC, e.g. 10.0.0.0/16"
-        },
-        "subnet_count": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "load_balancer": {
-          "type": "boolean"
-        }
-      }
+    "total_users": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of users across all locations"
     },
-    "services": {
+    "user_accounts": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["service_name", "enabled"],
+        "required": ["count", "location"],
         "properties": {
-          "service_name": {
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "location": {
             "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "configuration": {
-            "type": "object",
-            "description": "Service-specific configuration key-value pairs"
           }
         }
       },
-      "description": "List of services to enable in the environment"
+      "description": "User accounts broken down by location"
     },
-    "high_availability": {
-      "type": "boolean",
-      "default": false
+    "hardware": {
+      "type": "object",
+      "required": ["interactive_servers"],
+      "properties": {
+        "interactive_servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["count", "instance_type", "vcpus", "memory_gb"],
+            "properties": {
+              "count": { "type": "integer", "minimum": 1 },
+              "purpose": { "type": "string" },
+              "instance_type": { "type": "string", "description": "e.g., M6i.4xlarge" },
+              "vcpus": { "type": "integer", "minimum": 1 },
+              "memory_gb": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "backup_storage_gb": { "type": "integer", "minimum": 0 },
+            "scratch_storage_gb": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
     },
-    "backup_enabled": {
-      "type": "boolean",
-      "default": true
+    "software_licenses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["product_name", "quantity"],
+        "properties": {
+          "product_name": { "type": "string" },
+          "quantity": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "description": "List of Cadence products/tools with license counts"
     },
-    "estimated_users": {
-      "type": "integer",
-      "minimum": 0
+    "additional_services": {
+      "type": "object",
+      "properties": {
+        "pdks_to_install": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "source": { "type": "string", "enum": ["customer_provided", "cadence_provided"] }
+            }
+          }
+        }
+      }
     }
   }
 }

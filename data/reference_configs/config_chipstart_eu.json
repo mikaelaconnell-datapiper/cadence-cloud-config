@@ -1,0 +1,52 @@
+{
+  "customer_name": "[REDACTED]",
+  "platform_provider": "AWS",
+  "chamber_location": "AWS Frankfurt",
+  "third_party_licence_chamber_required": true,
+  "total_users": 10,
+  "user_accounts": [
+    {"count": 5, "location": "Berlin Germany"},
+    {"count": 5, "location": "Istanbul Turkiye"}
+  ],
+  "hardware": {
+    "interactive_servers": [
+      {
+        "count": 1,
+        "purpose": "interactive server",
+        "instance_type": "M6i.4xlarge",
+        "vcpus": 16,
+        "memory_gb": 64
+      },
+      {
+        "count": 1,
+        "purpose": "dedicated revision control",
+        "instance_type": "M6i.xlarge",
+        "vcpus": 4,
+        "memory_gb": 16
+      }
+    ],
+    "storage": {
+      "backup_storage_gb": 1000,
+      "scratch_storage_gb": 1000
+    }
+  },
+  "software_licenses": [
+    {"product_name": "Virtuoso Schematic Editor L", "quantity": 3},
+    {"product_name": "Virtuoso ADE Assembler", "quantity": 3},
+    {"product_name": "Spectre MMSIM with Spectre X Simulator", "quantity": 9},
+    {"product_name": "Physical Verification System Design Rule Checker XL", "quantity": 1},
+    {"product_name": "Quantus Extraction L", "quantity": 1},
+    {"product_name": "Voltus-XFI Custom Power Integrity Solution", "quantity": 1},
+    {"product_name": "EMX Planar 3D Solver V8", "quantity": 1},
+    {"product_name": "Physical Verification System Results Viewer", "quantity": 2},
+    {"product_name": "Virtuoso Advanced Node Options for Layout", "quantity": 2},
+    {"product_name": "iPegasus DRC for Virtuoso Studio", "quantity": 1},
+    {"product_name": "iPegasus FILL for Virtuoso Studio", "quantity": 1}
+  ],
+  "additional_services": {
+    "pdks_to_install": [
+      {"name": "Customer PDK 1", "source": "customer_provided"},
+      {"name": "Customer PDK 2", "source": "customer_provided"}
+    ]
+  }
+}
