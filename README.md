@@ -39,7 +39,7 @@ Parses Cadence Managed Cloud SOW documents and generates chamber configuration J
 ## Setup
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/mikaelaconnell-datapiper/cadence-cloud-config.git
 cd cadence-cloud-config
 python3 -m venv venv
 source venv/bin/activate
