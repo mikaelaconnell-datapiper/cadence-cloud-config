@@ -12,7 +12,7 @@ Parses Cadence Managed Cloud SOW documents and generates chamber configuration J
 
 1. **Extract** — Pull text from a SOW PDF
 2. **Sanitize** — Redact customer PII (names, emails, addresses, signatures, terms, payment info) while preserving chamber requirements
-3. **Generate** — Agent Designer (or Gemini API) produces the chamber config JSON
+3. **Generate** — Agent Designer produces the chamber config JSON
 4. **Validate** — Check the JSON against the target schema
 5. **Score** — Compare output to a known-good config field by field
 
@@ -22,8 +22,8 @@ Parses Cadence Managed Cloud SOW documents and generates chamber configuration J
 ├── app.py                  # Gradio web UI (3 tabs: Sanitize, Validate & Score, Full Pipeline)
 ├── extract_pdf.py          # PDF text extraction (PyMuPDF + pypdf fallback)
 ├── sanitizer.py            # PII redaction based on Cadence's SOW structure
-├── build_prompt.py         # Few-shot prompt construction for Gemini API
-├── call_gemini.py          # Gemini API / Vertex AI / mock fallback
+├── build_prompt.py         # Few-shot prompt construction
+├── call_gemini.py          # Gemini API integration (optional full pipeline)
 ├── validate_output.py      # JSON schema validation
 ├── score_accuracy.py       # Field-level accuracy scoring
 ├── config_schema.json      # Target chamber config schema
