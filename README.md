@@ -77,3 +77,8 @@ The agent extracts these fields from SOW documents:
 | Terms and conditions | Software license names and quantities |
 | Payment schedules, pricing | User counts and locations |
 | Footer text, document IDs | PDK requirements |
+
+## Documentation
+
+- [Dev Day Plan](https://htmlpreview.github.io/?https://github.com/mikaelaconnell-datapiper/cadence-cloud-config/blob/main/Cloud_Config_Dev_Day_Plan.html) - Schedule, team roles, and showcase template
+- [Technical Reference](https://htmlpreview.github.io/?https://github.com/mikaelaconnell-datapiper/cadence-cloud-config/blob/main/Cloud_Config_Technical_Reference.html) - Agent Designer guide, prompt engineering, and supporting tools
