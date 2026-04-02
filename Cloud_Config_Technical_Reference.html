@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Config Right Sizing Agent  - Technical Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Mono&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Google Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 40px 50px; }
+  h1 { font-size: 28px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+  h2 { font-size: 20px; font-weight: 600; color: #1a73e8; margin-top: 40px; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; }
+  h3 { font-size: 16px; font-weight: 600; color: #374151; margin-top: 22px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; color: #4b5563; margin-top: 16px; margin-bottom: 6px; }
+  p { margin-bottom: 12px; font-size: 14px; }
+  ul, ol { margin-bottom: 12px; padding-left: 24px; font-size: 14px; }
+  li { margin-bottom: 5px; }
+  strong { font-weight: 600; }
+  code { font-family: 'Google Sans Mono', monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  pre { background: #f3f4f6; padding: 14px 18px; border-radius: 6px; overflow-x: auto; margin: 12px 0 16px; font-size: 13px; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 13px; }
+  th { background: #f3f4f6; text-align: left; padding: 10px 12px; font-weight: 600; color: #374151; border: 1px solid #e5e7eb; }
+  td { padding: 9px 12px; border: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .subtitle { font-size: 16px; color: #6b7280; margin-bottom: 30px; }
+  .highlight-box { background: #eff6ff; border-left: 4px solid #1a73e8; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 14px; }
+  .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 14px; }
+  .green-box { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 14px; }
+  @media print {
+    body { padding: 15px 25px; max-width: 100%; font-size: 12px; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 16px; margin-top: 20px; page-break-before: auto; }
+    table { font-size: 11px; page-break-inside: avoid; }
+    pre { page-break-inside: avoid; font-size: 11px; }
+    .highlight-box, .warning-box, .green-box { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Cloud Config Right Sizing Agent</h1>
+<div class="subtitle">Technical Reference & Guide</div>
+
+<p>This document covers how to use Gemini Enterprise Agent Designer to build the SOW-to-config agent, how to approach prompt engineering, and how the supporting tooling (sanitization, validation, scoring) works.</p>
+
+<!-- ============================================================ -->
+<h2>Agent Designer  - Step-by-Step Guide</h2>
+
+<h3>Getting Started</h3>
+<ol>
+  <li>Open Gemini Enterprise</li>
+  <li>In the left sidebar, click <strong>Agents</strong></li>
+  <li>Click <strong>+ New agent</strong></li>
+  <li>The Agent Designer page appears with a chat box at the bottom</li>
+</ol>
+
+<h3>Two Ways to Build</h3>
+<table>
+  <tr><th>Method</th><th>Best for</th></tr>
+  <tr><td><strong>Chat pane</strong>  - Describe the agent in plain language</td><td>Getting started quickly</td></tr>
+  <tr><td><strong>Designer pane</strong>  - Edit instructions, model settings, data sources directly</td><td>Fine-tuning after the initial version</td></tr>
+</table>
+
+<h3>Step 1: Create the Agent</h3>
+<p>Paste the following into the chat box:</p>
+<pre><code>Create an agent that accepts a Cadence Managed Cloud Statement of Work
+(SOW) document and generates a chamber configuration JSON.
+
+The agent should extract:
+1. Platform provider (AWS, GCP, or Azure) and chamber location
+2. Total number of users and their account locations
+3. Hardware: interactive servers (count, instance type, vCPUs, RAM),
+   storage (backup GB, scratch GB)
+4. Software/licensed materials: each Cadence product name and quantity
+5. Additional services: PDKs to install
+6. Output only valid JSON  - no markdown, no explanations
+7. Set customer_name to "[REDACTED]"</code></pre>
+
+<h3>Step 2: Test the Agent</h3>
+<ol>
+  <li>In the agent preview, type: <strong>"Here is a SOW document"</strong> and attach a sample SOW PDF</li>
+  <li>Review the JSON output  - Is it valid? Are all fields present? Do the values make sense?</li>
+  <li>Note what the agent gets right and what it misses</li>
+</ol>
+
+<h3>Step 3: Open Agent Designer for Fine-Tuning</h3>
+<p>Click <strong>"Open in Agent Designer"</strong> to access the full configuration. The <strong>Instructions</strong> field is where prompt engineering happens.</p>
+
+<!-- ============================================================ -->
+<h2>Prompt Engineering Guide</h2>
+
+<h3>Principle 1: Be Specific, Not Vague</h3>
+
+<div class="warning-box">
+  <strong>Bad:</strong> "Generate a cloud config from the SOW."<br><br>
+  <strong>Good:</strong> "Read the SOW document and generate a JSON configuration with the following structure. Extract the values directly from the document. If a value is not explicitly stated, infer it conservatively based on the context."
+</div>
+
+<h3>Principle 2: Include the Schema in the Instructions</h3>
+<p>The agent needs to know exactly what the output should look like. Include the full JSON schema or a complete example of the expected output structure directly in the instructions.</p>
+
+<h3>Principle 3: Tell the Agent What NOT to Do</h3>
+<pre><code>- Do not include markdown code fences around the JSON
+- Do not add explanations or commentary before or after the JSON
+- Do not include software products not listed in the SOW
+- Do not include customer addresses, contact info, signatures, terms, or payment info
+- Do not guess pricing or budget information</code></pre>
+
+<h3>Principle 4: Set Clear Rules for Ambiguous Cases</h3>
+<pre><code>- Use exact field names: "product_name" (not "name"), "instance_type", "vcpus", "memory_gb"
+- For software licenses, remove trademark symbols like (R) and (TM) from product names
+- Always set customer_name to "[REDACTED]"
+- If backup or scratch storage is not mentioned, omit those fields
+- Only include PDKs that are explicitly listed in the SOW</code></pre>
+
+<!-- ============================================================ -->
+<h2>Few-Shot Prompting  - How to Use Reference Examples</h2>
+
+<h3>What is Few-Shot Prompting?</h3>
+<p>Instead of just giving the agent instructions, show it examples of correct input->output pairs <strong>before</strong> asking it to process a new SOW. This dramatically improves accuracy because the agent learns the expected mapping pattern from real examples.</p>
+
+<h3>How to Add Examples to the Agent Instructions</h3>
+
+<pre><code>REFERENCE EXAMPLES:
+
+Example 1  - Small chamber (10 users):
+Input SOW excerpt:
+"Platform Provider: AWS, Chamber Location: AWS Frankfurt.
+10 users (5 Berlin, 5 Istanbul). 1 interactive server,
+M6i.4xlarge, 16 vCPUs, 64 GB RAM. 1000 GB backup storage.
+3 Virtuoso Schematic Editor L, 9 Spectre MMSIM.
+2 customer-provided PDKs."
+
+Expected output:
+{
+  "customer_name": "[REDACTED]",
+  "platform_provider": "AWS",
+  "chamber_location": "AWS Frankfurt",
+  "total_users": 10,
+  "user_accounts": [
+    {"count": 5, "location": "Berlin Germany"},
+    {"count": 5, "location": "Istanbul Turkiye"}
+  ],
+  "hardware": {
+    "interactive_servers": [
+      {"count": 1, "instance_type": "M6i.4xlarge", "vcpus": 16, "memory_gb": 64}
+    ],
+    "storage": {"backup_storage_gb": 1000, "scratch_storage_gb": 1000}
+  },
+  "software_licenses": [
+    {"product_name": "Virtuoso Schematic Editor L", "quantity": 3},
+    {"product_name": "Spectre MMSIM with Spectre X Simulator", "quantity": 9}
+  ]
+}</code></pre>
+
+<h3>Tips for Effective Few-Shot Examples</h3>
+
+<div class="highlight-box">
+<ul style="margin:0; padding-left: 20px;">
+  <li><strong>Include at least 2-3 examples</strong> covering different chamber sizes (small team, large deployment)</li>
+  <li><strong>Match the exact schema</strong>  - examples must use the same JSON field names as the expected output</li>
+  <li><strong>Use realistic content</strong>  - the more examples look like real Cadence SOWs, the better the agent performs</li>
+  <li><strong>Cover variation</strong>  - include examples with different instance types, different numbers of licenses, different regions</li>
+  <li><strong>Use real SOW/config pairs</strong> (with PII removed) when available</li>
+</ul>
+</div>
+
+<h3>Uploading Reference Files Instead</h3>
+<p>Instead of pasting everything into the instructions, reference materials can be uploaded as files in Agent Designer:</p>
+<ol>
+  <li>In Agent Designer, look for <strong>Add files</strong> or <strong>Data sources</strong></li>
+  <li>Upload SOW/config pairs as reference documents</li>
+  <li>Update the instructions: "Use the uploaded reference examples to understand the expected mapping pattern"</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>The Iteration Loop</h2>
+
+<p>After each test run, follow this cycle to improve the agent:</p>
+
+<ol>
+  <li><strong>Run</strong> a SOW through the agent</li>
+  <li><strong>Compare</strong> the output to what was expected</li>
+  <li><strong>Identify the gap</strong>  - missing field? wrong value? extra text?</li>
+  <li><strong>Update</strong> the instructions to address that specific gap</li>
+  <li><strong>Re-test</strong> the same SOW to verify the fix</li>
+  <li><strong>Cross-test</strong> a different SOW to make sure the fix didn't break something else</li>
+</ol>
+
+<h3>Common Issues and Fixes</h3>
+<table>
+  <tr><th>Problem</th><th>Solution</th></tr>
+  <tr><td>Missing fields in the JSON</td><td>Add the missing fields to the schema in the instructions and specify they are required</td></tr>
+  <tr><td>Wrong values (e.g., wrong instance type)</td><td>Add a rule explaining how to choose that value, or add a reference example that covers that case</td></tr>
+  <tr><td>Extra text around the JSON</td><td>Add "Output ONLY valid JSON. No markdown, no explanations, no code fences"</td></tr>
+  <tr><td>Inconsistent output format</td><td>Add a complete example of the exact expected JSON structure</td></tr>
+  <tr><td>Agent ignores part of the SOW</td><td>Add "Extract ALL relevant information" and specify which sections to look for</td></tr>
+  <tr><td>Agent hallucinates services not in the SOW</td><td>Add "Only include services explicitly mentioned in the SOW"</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>Target JSON Schema</h2>
+
+<p>The agent should generate JSON matching this structure. This may be updated on dev day based on the actual Terraform configuration format.</p>
+
+<pre><code>{
+  "customer_name": "[REDACTED]",
+  "platform_provider": "AWS | GCP | Azure (required)",
+  "chamber_location": "string, e.g. AWS Frankfurt (required)",
+  "third_party_licence_chamber_required": "boolean",
+  "total_users": "integer (required)",
+  "user_accounts": [
+    { "count": "integer", "location": "string, e.g. Berlin Germany" }
+  ],
+  "hardware": {
+    "interactive_servers": [
+      {
+        "count": "integer",
+        "purpose": "string, e.g. interactive server",
+        "instance_type": "string, e.g. M6i.4xlarge",
+        "vcpus": "integer",
+        "memory_gb": "integer"
+      }
+    ],
+    "storage": {
+      "backup_storage_gb": "integer",
+      "scratch_storage_gb": "integer"
+    }
+  },
+  "software_licenses": [
+    { "product_name": "string, e.g. Virtuoso Schematic Editor L", "quantity": "integer" }
+  ],
+  "additional_services": {
+    "pdks_to_install": [
+      { "name": "string", "source": "customer_provided | cadence_provided" }
+    ]
+  }
+}</code></pre>
+
+<!-- ============================================================ -->
+<h2>Supporting Tools  - Sanitize, Validate & Score</h2>
+
+<h3>Sanitize  - PII Redaction</h3>
+<p>Customer SOWs contain sensitive information. The sanitization pipeline extracts text from the PDF and redacts PII before any content reaches the model.</p>
+
+<table>
+  <tr><th>What gets redacted</th><th>Example</th><th>Replacement</th></tr>
+  <tr><td>Email addresses</td><td>john@acme.com</td><td>[REDACTED_EMAIL]</td></tr>
+  <tr><td>Phone numbers</td><td>(555) 123-4567</td><td>[REDACTED_PHONE]</td></tr>
+  <tr><td>Street addresses</td><td>123 Main Street</td><td>[REDACTED_ADDRESS]</td></tr>
+  <tr><td>Account/contract IDs</td><td>Account ID: ACME-001</td><td>[REDACTED_ACCOUNT_ID]</td></tr>
+  <tr><td>Client/customer names</td><td>Client Name: Acme Corp</td><td>Client Name: [REDACTED]</td></tr>
+  <tr><td>Pricing/budget lines</td><td>Budget: $45,000/month</td><td>[REDACTED_PRICING]</td></tr>
+  <tr><td>SOW headings/order numbers</td><td>Order #C-GNX01</td><td>[REDACTED_ORDER_ID]</td></tr>
+  <tr><td>Signatures, terms, footer text</td><td>Customer Signature: ___</td><td>[REDACTED_SIGNATURE]</td></tr>
+</table>
+
+<div class="green-box">
+  <strong>What stays intact:</strong> Platform provider, chamber location, hardware specs, storage amounts, software license names and quantities, user counts and locations, PDK requirements.
+</div>
+
+<h3>Validate & Score  - Output Quality</h3>
+
+<p><strong>Validation</strong> checks the generated JSON against the target schema  - are all required fields present, are data types correct, are enum values valid.</p>
+
+<p><strong>Scoring</strong> compares the generated config to a known-good config field by field and reports a percentage accuracy.</p>
+
+<table>
+  <tr><th>Category</th><th>Fields Checked</th></tr>
+  <tr><td>Platform</td><td>platform_provider, chamber_location, third_party_licence_chamber_required, total_users</td></tr>
+  <tr><td>Hardware</td><td>interactive_servers[0].count, instance_type, vcpus, memory_gb</td></tr>
+  <tr><td>Storage</td><td>backup_storage_gb, scratch_storage_gb</td></tr>
+  <tr><td>Software</td><td>Each license: product_name and quantity</td></tr>
+  <tr><td>Users</td><td>user_accounts (count + location per entry)</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>Validation</strong> = "Is the JSON structurally correct?" (yes/no gate)<br>
+  <strong>Scoring</strong> = "Are the values accurate compared to the expected answer?" (percentage)
+</div>
+
+<!-- ============================================================ -->
+<h2>The Gradio App</h2>
+
+<p>A web-based UI that supports the Agent Designer workflow:</p>
+
+<table>
+  <tr><th>Tab</th><th>What it does</th><th>Inputs</th><th>Outputs</th></tr>
+  <tr><td><strong>Sanitize SOW</strong></td><td>Extract text from PDF + redact PII</td><td>Upload a PDF</td><td>Raw text + sanitized text (copy into Agent Designer)</td></tr>
+  <tr><td><strong>Validate & Score</strong></td><td>Check schema + score accuracy</td><td>Paste JSON from Agent Designer</td><td>Validation status + field-level accuracy report</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>What to Update When the Schema Changes</h2>
+
+<table>
+  <tr><th>What changed</th><th>Where to update</th></tr>
+  <tr><td>Target schema (fields, types, required)</td><td><code>config_schema.json</code> + Agent Designer instructions</td></tr>
+  <tr><td>Critical fields for scoring</td><td><code>score_accuracy.py</code> -> <code>critical_fields</code> list</td></tr>
+  <tr><td>Reference examples</td><td><code>data/reference_sows/</code> + <code>data/reference_configs/</code> + Agent Designer</td></tr>
+  <tr><td>Known-good configs for scoring</td><td><code>data/eval_configs/</code></td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>Resources</h2>
+
+<table>
+  <tr><th>Resource</th><th>Location</th></tr>
+  <tr><td>Source code</td><td>github.com/mikaelaconnell-datapiper/cadence-cloud-config</td></tr>
+  <tr><td>Colab notebook</td><td><code>Cloud_Config_Agent.ipynb</code> in the repo</td></tr>
+  <tr><td>Agent Designer docs</td><td>cloud.google.com/gemini/enterprise/docs/agent-designer</td></tr>
+</table>
+
+</body>
+</html>

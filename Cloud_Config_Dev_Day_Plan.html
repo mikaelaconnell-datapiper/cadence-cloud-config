@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Config Right Sizing Agent - Dev Day Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Google Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.5; max-width: 850px; margin: 0 auto; padding: 30px 40px; font-size: 13px; }
+  h1 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+  h2 { font-size: 15px; font-weight: 600; color: #1a73e8; margin-top: 18px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #e5e7eb; }
+  p { margin-bottom: 8px; }
+  ul { margin-bottom: 8px; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 12px; }
+  th { background: #f3f4f6; text-align: left; padding: 6px 10px; font-weight: 600; color: #374151; border: 1px solid #e5e7eb; }
+  td { padding: 6px 10px; border: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .subtitle { font-size: 14px; color: #6b7280; margin-bottom: 16px; }
+  .two-col { display: flex; gap: 20px; }
+  .two-col > div { flex: 1; }
+  .highlight-box { background: #eff6ff; border-left: 3px solid #1a73e8; padding: 8px 12px; margin: 8px 0; border-radius: 0 4px 4px 0; }
+  @media print {
+    body { padding: 10px 20px; max-width: 100%; font-size: 12px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 14px; margin-top: 14px; }
+    table { font-size: 11px; page-break-inside: avoid; }
+    .two-col { page-break-inside: avoid; }
+    .highlight-box { page-break-inside: avoid; }
+    .showcase-table td { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Cloud Config Right Sizing Agent</h1>
+<div class="subtitle">Use Case 4 | Agentic AI Dev Day | April 2, 2026</div>
+
+<div class="highlight-box">
+  <strong>Objective:</strong> Build a low-code agent that takes an approved SOW document and returns chamber configuration JSON aligned to the CICD schema. Priorities: <strong>privacy, output quality, clear demo.</strong>
+</div>
+
+<h2>Schedule</h2>
+<table>
+  <tr><td style="width:110px;">08:00</td><td>Registration and Breakfast</td></tr>
+  <tr><td>09:00 - 09:30</td><td>AI Agent Builder Tips and Tricks</td></tr>
+  <tr><td>09:30 - 10:15</td><td>Setup: confirm inputs, SOWs, schema, success criteria. Brainstorm prompt ideas on flip board.</td></tr>
+  <tr><td>10:15 - 12:00</td><td>Build and test agent in Agent Designer. Load instructions, examples, test SOWs, refine.</td></tr>
+  <tr><td>12:00 - 1:00</td><td>Working Lunch and Checkpoint</td></tr>
+  <tr><td>1:00 - 2:00</td><td>Run more SOWs, validate output, score accuracy, iterate on Gradio app.</td></tr>
+  <tr><td>2:00 - 2:45</td><td>Team Lead Checkpoint. Select 3 demo SOWs. Record 2-min demo. Fill showcase slide. Team photo.</td></tr>
+  <tr><td>3:00 - 4:00</td><td>Showcase: 5-10 min per team</td></tr>
+  <tr><td>4:00 - 7:00</td><td>Happy Hour</td></tr>
+</table>
+
+<h2>What the Agent Extracts vs. What Gets Redacted</h2>
+<div class="two-col">
+  <div>
+    <strong>Extracted (kept)</strong>
+    <ul>
+      <li>Platform provider and region</li>
+      <li>Hardware specs (instance type, vCPUs, RAM)</li>
+      <li>Storage (backup GB, scratch GB)</li>
+      <li>Software licenses (product + quantity)</li>
+      <li>User counts and locations</li>
+      <li>PDK requirements</li>
+    </ul>
+  </div>
+  <div>
+    <strong>Redacted (removed)</strong>
+    <ul>
+      <li>SOW headings and order numbers</li>
+      <li>Customer/billing addresses</li>
+      <li>Contact info, emails, signatures</li>
+      <li>Terms and conditions</li>
+      <li>Payment schedules and pricing</li>
+      <li>Footer text and document IDs</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Team Roles</h2>
+<table>
+  <tr><th>Role</th><th>Responsibility</th></tr>
+  <tr><td>Agent workflow</td><td>Build and update the Agent Designer agent</td></tr>
+  <tr><td>Data / examples</td><td>Manage SOWs, known-good outputs, schema, reference examples</td></tr>
+  <tr><td>Validation / scoring</td><td>Check generated JSON against schema and expected outputs</td></tr>
+  <tr><td>Privacy / narrative</td><td>Document data handling, prepare the showcase story</td></tr>
+  <tr><td>Demo</td><td>Select 3 runs, record demo video, lead the presentation</td></tr>
+</table>
+
+<h2>Showcase Slide (fill in during the day)</h2>
+<table class="showcase-table">
+  <tr>
+    <td style="width:50%; padding: 10px;">
+      <strong style="background: #3b82f6; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">PROBLEM</strong>
+      <p style="margin-top: 6px;">Manual SOW parsing is slow, inconsistent, and error-prone. Missed fields lead to deployment rework.</p>
+    </td>
+    <td style="width:50%; padding: 10px;">
+      <strong style="background: #f59e0b; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">DEMO</strong>
+      <p style="margin-top: 6px;">[Record 2-min demo on dev day]</p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 10px;">
+      <strong style="background: #16a34a; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">APPROACH</strong>
+      <p style="margin-top: 6px;">Low-code agent in Gemini Enterprise Agent Designer + Gradio tooling for PII redaction and schema validation.</p>
+    </td>
+    <td style="padding: 10px;">
+      <strong style="background: #dc2626; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">VALUE / IMPACT</strong>
+      <ul style="margin-top: 6px; padding-left: 16px;">
+        <li>SOW-to-config turnaround: hours to minutes</li>
+        <li>Eliminates manual transcription errors</li>
+        <li>Privacy-first: PII redacted before model input</li>
+        <li>Validated, standardized output reduces rework</li>
+      </ul>
+      <p style="margin-top: 8px; font-size: 11px; color: #4b5563;"><strong>Production path:</strong> Automated PII preprocessing, SOWs and configs stored in Cloud Storage, validation pipeline as a quality gate, approved configs feed into Terraform for chamber provisioning.</p>
+    </td>
+  </tr>
+</table>
+
+<h2>Additional Resources</h2>
+<p>A starter codebase with the Gradio app, sanitizer, schema validation, and accuracy scoring is available as a public repository. The team can fork it to customize and extend the tooling beyond dev day.</p>
+<p><strong>github.com/mikaelaconnell-datapiper/cadence-cloud-config</strong></p>
+
+</body>
+</html>
